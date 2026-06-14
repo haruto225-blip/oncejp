@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl *)",
+      "Skill(run)",
+      "Bash(grep -o '<h1[^<]*<\\\\/h1>\\\\|公開日時:[^<]*\\\\|最大参加人数:[^<]*\\\\|参加する\\\\|data:image/png[^\"]\\\\{0,40\\\\}')",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
