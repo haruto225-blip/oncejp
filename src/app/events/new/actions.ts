@@ -31,7 +31,7 @@ export async function createEvent(
     .insert({
       host_id: DUMMY_HOST_ID,
       name,
-      reveal_at: new Date(revealAt).toISOString(),
+      reveal_at: new Date(revealAt + "+09:00").toISOString(),
       max_guests: maxGuestsNumber,
     })
     .select("id")
