@@ -23,10 +23,13 @@ export default async function JoinPage({
   const boundAction = joinEvent.bind(null, event.id);
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">{event.name}</h1>
-        <p className="text-sm text-gray-600">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-film-bg px-4 py-10">
+      <div className="w-full max-w-sm">
+        <p className="mb-1 font-mono text-[10px] tracking-[0.35em] text-film-amber/50 uppercase">
+          ── GUEST ──
+        </p>
+        <h1 className="font-serif text-2xl text-film-card">{event.name}</h1>
+        <p className="mt-2 font-sans text-sm text-film-card/50">
           参加するにはお名前を入力してください
         </p>
       </div>

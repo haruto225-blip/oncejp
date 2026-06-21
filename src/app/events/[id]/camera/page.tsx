@@ -24,8 +24,8 @@ export default async function CameraPage({
 
   if (!guest_id) {
     return (
-      <div className="mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4">
-        <p className="text-sm text-gray-600">
+      <div className="flex min-h-screen items-center justify-center bg-film-bg px-4">
+        <p className="text-center font-mono text-xs text-film-safelight">
           参加登録が完了していません。もう一度お試しください。
         </p>
       </div>
@@ -33,9 +33,16 @@ export default async function CameraPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 py-6">
-      <h1 className="text-lg font-semibold">{event.name}</h1>
-      <CameraView eventId={event.id} guestId={guest_id} />
+    <div className="flex min-h-screen flex-col bg-film-bg">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-8">
+        <div>
+          <p className="mb-1 font-mono text-[10px] tracking-[0.35em] text-film-amber/50 uppercase">
+            ── CAMERA ──
+          </p>
+          <h1 className="font-serif text-xl text-film-card">{event.name}</h1>
+        </div>
+        <CameraView eventId={event.id} guestId={guest_id} />
+      </div>
     </div>
   );
 }

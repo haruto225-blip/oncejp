@@ -29,13 +29,17 @@ export function RevealCountdown({ revealAt }: { revealAt: string }) {
   }, []);
 
   if (now === null) {
-    return <p className="text-sm text-gray-500">残り時間を計算中…</p>;
+    return (
+      <p className="font-mono text-xs text-film-amber/40 tracking-widest">
+        ── ── ──
+      </p>
+    );
   }
 
   const remaining = target - now;
 
   return (
-    <p className="text-sm text-gray-500">
+    <p className="font-mono text-sm text-film-amber/70 tracking-wider">
       {remaining <= 0 ? "まもなく公開されます" : formatRemaining(remaining)}
     </p>
   );
