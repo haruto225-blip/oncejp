@@ -2,13 +2,17 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { RevealCountdown } from "./reveal-countdown";
 import { PhotoCard } from "./photo-card";
+import { GuestBottomNav } from "@/components/GuestBottomNav";
 
 export default async function GalleryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ guest_id?: string }>;
 }) {
   const { id } = await params;
+  const { guest_id } = await searchParams;
 
   const { data: event } = await supabase
     .from("events")
@@ -20,10 +24,12 @@ export default async function GalleryPage({
     notFound();
   }
 
+  const guestId = guest_id ?? null;
+
   /* ── 現像中スクリーン ── */
   if (event.reveal_at && new Date(event.reveal_at) > new Date()) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-film-bg px-4 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-film-bg px-4 pb-16 text-center">
         <p className="font-mono text-[10px] tracking-[0.4em] text-film-amber/40 uppercase">
           ── DARKROOM ──
         </p>
@@ -50,6 +56,13 @@ export default async function GalleryPage({
         </div>
 
         <RevealCountdown revealAt={event.reveal_at} />
+
+        <GuestBottomNav
+          eventId={event.id}
+          guestId={guestId}
+          revealAt={event.reveal_at}
+          current="gallery"
+        />
       </div>
     );
   }
@@ -81,7 +94,7 @@ export default async function GalleryPage({
 
   /* ── ギャラリースクリーン ── */
   return (
-    <div className="min-h-screen bg-film-bg px-4 py-10">
+    <div className="min-h-screen bg-film-bg px-4 py-10 pb-20">
       <div className="mx-auto max-w-md">
         {/* Header */}
         <div className="mb-8">
@@ -109,6 +122,13 @@ export default async function GalleryPage({
           </div>
         )}
       </div>
+
+      <GuestBottomNav
+        eventId={event.id}
+        guestId={guestId}
+        revealAt={event.reveal_at ?? null}
+        current="gallery"
+      />
     </div>
   );
 }

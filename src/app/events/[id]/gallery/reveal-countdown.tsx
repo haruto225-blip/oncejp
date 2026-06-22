@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 function formatRemaining(ms: number) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -21,12 +22,20 @@ function formatRemaining(ms: number) {
 export function RevealCountdown({ revealAt }: { revealAt: string }) {
   const target = new Date(revealAt).getTime();
   const [now, setNow] = useState<number | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= target) {
+        clearInterval(timer);
+        router.refresh();
+      }
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [target, router]);
 
   if (now === null) {
     return (
