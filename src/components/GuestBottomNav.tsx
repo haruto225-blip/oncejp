@@ -3,10 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-function getMinutesLeft(revealAt: string): number {
-  return Math.max(0, Math.ceil((new Date(revealAt).getTime() - Date.now()) / 60000));
-}
-
 export function GuestBottomNav({
   eventId,
   guestId,
@@ -18,11 +14,15 @@ export function GuestBottomNav({
   revealAt: string | null;
   current: "camera" | "gallery";
 }) {
-  const [isDeveloping, setIsDeveloping] = useState(false);
+  // null = 未判定（初期フラッシュ防止のためカメラタブを表示しておく）
+  const [isDeveloping, setIsDeveloping] = useState<boolean | null>(null);
   const [minutesLeft, setMinutesLeft] = useState(0);
 
   useEffect(() => {
-    if (!revealAt) return;
+    if (!revealAt) {
+      setIsDeveloping(null);
+      return;
+    }
     const target = new Date(revealAt).getTime();
 
     const update = () => {
@@ -48,6 +48,9 @@ export function GuestBottomNav({
   const inactiveColor = "rgba(242,235,221,0.45)";
   const activeColor = "#D4A24E";
 
+  // reveal_at 到達後は「撮影」タブを非表示にする
+  const showCameraTab = !(isDeveloping === false && revealAt !== null);
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around"
@@ -57,14 +60,16 @@ export function GuestBottomNav({
         height: "58px",
       }}
     >
-      <Link
-        href={cameraHref}
-        className="flex flex-1 flex-col items-center justify-center gap-[3px]"
-        style={{ color: current === "camera" ? activeColor : inactiveColor }}
-      >
-        <CameraIcon active={current === "camera"} />
-        <span className="font-mono text-[10px] tracking-wider">撮影</span>
-      </Link>
+      {showCameraTab && (
+        <Link
+          href={cameraHref}
+          className="flex flex-1 flex-col items-center justify-center gap-[3px]"
+          style={{ color: current === "camera" ? activeColor : inactiveColor }}
+        >
+          <CameraIcon active={current === "camera"} />
+          <span className="font-mono text-[10px] tracking-wider">撮影</span>
+        </Link>
+      )}
 
       <Link
         href={galleryHref}

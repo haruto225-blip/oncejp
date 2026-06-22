@@ -42,7 +42,7 @@ export default async function CameraPage({
           </p>
           <h1 className="font-serif text-xl text-film-card">{event.name}</h1>
         </div>
-        <CameraView eventId={event.id} guestId={guest_id} />
+        <CameraView eventId={event.id} guestId={guest_id} revealAt={event.reveal_at ?? null} />
       </div>
       <GuestBottomNav
         eventId={event.id}
