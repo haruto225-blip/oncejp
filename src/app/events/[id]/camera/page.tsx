@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { CameraView } from "./camera-view";
-import { GuestBottomNav } from "@/components/GuestBottomNav";
 
 export default async function CameraPage({
   params,
@@ -40,28 +39,13 @@ export default async function CameraPage({
     .eq("guest_id", guest_id);
 
   return (
-    <div className="flex min-h-screen flex-col bg-film-bg">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-8 pb-20">
-        <div>
-          <p className="mb-1 font-mono text-[10px] tracking-[0.35em] text-film-amber/50 uppercase">
-            ── CAMERA ──
-          </p>
-          <h1 className="font-serif text-xl text-film-card">{event.name}</h1>
-        </div>
-        <CameraView
-          eventId={event.id}
-          guestId={guest_id}
-          revealAt={event.reveal_at ?? null}
-          maxPhotosPerGuest={event.max_photos_per_guest ?? null}
-          initialPhotoCount={photoCount ?? 0}
-        />
-      </div>
-      <GuestBottomNav
-        eventId={event.id}
-        guestId={guest_id}
-        revealAt={event.reveal_at ?? null}
-        current="camera"
-      />
-    </div>
+    <CameraView
+      eventId={event.id}
+      guestId={guest_id}
+      revealAt={event.reveal_at ?? null}
+      maxPhotosPerGuest={event.max_photos_per_guest ?? null}
+      initialPhotoCount={photoCount ?? 0}
+      eventName={event.name}
+    />
   );
 }

@@ -4,36 +4,67 @@ import Link from "next/link";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
+function FilmIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+      <line x1="7" y1="2" x2="7" y2="22" />
+      <line x1="17" y1="2" x2="17" y2="22" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <line x1="2" y1="7" x2="7" y2="7" />
+      <line x1="2" y1="17" x2="7" y2="17" />
+      <line x1="17" y1="17" x2="22" y2="17" />
+      <line x1="17" y1="7" x2="22" y2="7" />
+    </svg>
+  );
+}
+
+const PERF_COUNT = 8;
+
 export function CameraView({
   eventId,
   guestId,
   revealAt,
   maxPhotosPerGuest,
   initialPhotoCount,
+  eventName,
 }: {
   eventId: string;
   guestId: string;
   revealAt: string | null;
   maxPhotosPerGuest: number | null;
   initialPhotoCount: number;
+  eventName: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [frameCount, setFrameCount] = useState(initialPhotoCount);
   const [isExpired, setIsExpired] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
 
   const remaining =
     maxPhotosPerGuest !== null ? maxPhotosPerGuest - frameCount : null;
   const isFilmExhausted = remaining !== null && remaining <= 0;
 
+  // reveal_at timer
   useEffect(() => {
     if (!revealAt) return;
     const target = new Date(revealAt).getTime();
-
     if (Date.now() >= target) {
       setIsExpired(true);
       return;
     }
-
     const timer = setInterval(() => {
       if (Date.now() >= target) {
         setIsExpired(true);
@@ -43,38 +74,77 @@ export function CameraView({
     return () => clearInterval(timer);
   }, [revealAt]);
 
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (maxPhotosPerGuest !== null && frameCount >= maxPhotosPerGuest) return;
+  // camera stream
+  useEffect(() => {
+    if (isExpired || isFilmExhausted) return;
+    let stream: MediaStream | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then((s) => {
+        stream = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+        }
+      })
+      .catch(() => setCameraError(true));
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [isExpired, isFilmExhausted]);
 
-      e.target.value = "";
-      setFrameCount((n) => n + 1);
+  const handleShutter = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    if (isFilmExhausted || isCapturing) return;
+    if (maxPhotosPerGuest !== null && frameCount >= maxPhotosPerGuest) return;
 
-      const photoId = crypto.randomUUID();
-      const storageKey = `events/${eventId}/${guestId}/${photoId}.jpg`;
+    setFrameCount((n) => n + 1);
+    setIsCapturing(true);
+    setIsFlashing(true);
+    setTimeout(() => setIsFlashing(false), 120);
 
-      const { error: uploadError } = await supabase.storage
-        .from("photos")
-        .upload(storageKey, file, { contentType: file.type || "image/jpeg" });
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setIsCapturing(false);
+      return;
+    }
+    ctx.drawImage(video, 0, 0);
 
-      if (uploadError) return;
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) {
+      setIsCapturing(false);
+      return;
+    }
 
+    const photoId = crypto.randomUUID();
+    const storageKey = `events/${eventId}/${guestId}/${photoId}.jpg`;
+    const arrayBuffer = await blob.arrayBuffer();
+
+    const { error: uploadError } = await supabase.storage
+      .from("photos")
+      .upload(storageKey, arrayBuffer, { contentType: "image/jpeg" });
+
+    if (!uploadError) {
       await supabase.from("photos").insert({
         event_id: eventId,
         guest_id: guestId,
         storage_key: storageKey,
         is_hidden: true,
       });
-    },
-    [eventId, guestId, maxPhotosPerGuest, frameCount],
-  );
+    }
+
+    setIsCapturing(false);
+  }, [eventId, guestId, isFilmExhausted, isCapturing, frameCount, maxPhotosPerGuest]);
 
   /* ── フィルム使い切りスクリーン ── */
   if (isFilmExhausted) {
     return (
-      <div className="flex flex-col items-center gap-8 py-6 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-film-bg px-6 text-center">
         <p className="font-mono text-[10px] tracking-[0.4em] text-film-amber/40 uppercase">
           ── FILM EXHAUSTED ──
         </p>
@@ -125,7 +195,7 @@ export function CameraView({
   /* ── 撮影終了スクリーン ── */
   if (isExpired) {
     return (
-      <div className="flex flex-col items-center gap-8 py-6 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-film-bg px-6 text-center">
         <p className="font-mono text-[10px] tracking-[0.4em] text-film-amber/40 uppercase">
           ── FILM FINISHED ──
         </p>
@@ -173,72 +243,130 @@ export function CameraView({
 
   /* ── 通常カメラスクリーン ── */
   return (
-    <div className="relative flex flex-col items-center gap-10 py-6">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+    <div
+      className="flex h-screen flex-col overflow-hidden"
+      style={{ background: "#0F1118" }}
+    >
+      {/* Header */}
+      <div className="flex flex-none items-center justify-between px-5 py-3">
+        <p className="font-mono text-[10px] tracking-[0.4em] text-film-amber/40 uppercase">
+          ── CAMERA ──
+        </p>
+        <p className="truncate font-serif text-sm text-film-card/70">{eventName}</p>
+      </div>
 
-      {/* Remaining shots indicator */}
-      {remaining !== null && (
-        <div className="fixed bottom-24 left-4">
-          <p className="font-mono text-[11px] tracking-[0.2em] text-film-amber/70">
-            残り{remaining}枚
-          </p>
-        </div>
-      )}
-
-      {/* Camera open button */}
-      <div className="flex flex-col items-center gap-4">
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={isFilmExhausted}
-          className="relative h-28 w-28 rounded-full transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100"
-          style={{
-            background: "#2E3242",
-            boxShadow:
-              "0 0 0 4px #D4A24E, 0 0 0 8px #1A1D29, 0 10px 36px rgba(0,0,0,0.6)",
-          }}
-          aria-label="カメラを開く"
+      {/* Viewfinder: film strip layout with perforations */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left film strip */}
+        <div
+          className="flex w-4 flex-none flex-col justify-around py-2"
+          style={{ background: "#1A1D29" }}
         >
-          <span
-            className="absolute left-1/2 top-1/2 flex h-[70px] w-[70px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
-            style={{ background: "#F2EBDD" }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#1A1D29"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-8 w-8"
-              aria-hidden
-            >
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </span>
-        </button>
+          {Array.from({ length: PERF_COUNT }).map((_, i) => (
+            <div
+              key={i}
+              className="mx-auto h-3 w-2 rounded-[2px]"
+              style={{
+                background: "#0F1118",
+                border: "1px solid rgba(212,162,78,0.15)",
+              }}
+            />
+          ))}
+        </div>
 
-        <p className="font-mono text-[11px] tracking-[0.3em] text-film-card/50 uppercase">
-          カメラを開く
-        </p>
+        {/* Video frame */}
+        <div className="relative flex-1 overflow-hidden">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+
+          {/* Shutter flash */}
+          {isFlashing && (
+            <div className="pointer-events-none absolute inset-0 bg-white/75" />
+          )}
+
+          {/* Viewfinder overlay: vignette + corner brackets */}
+          <div className="pointer-events-none absolute inset-0">
+            <div
+              className="absolute inset-0"
+              style={{ boxShadow: "inset 0 0 60px rgba(0,0,0,0.5)" }}
+            />
+            <span className="absolute left-3 top-3 h-6 w-6 border-l-[2px] border-t-[2px] border-film-amber/50" />
+            <span className="absolute right-3 top-3 h-6 w-6 border-r-[2px] border-t-[2px] border-film-amber/50" />
+            <span className="absolute bottom-3 left-3 h-6 w-6 border-b-[2px] border-l-[2px] border-film-amber/50" />
+            <span className="absolute bottom-3 right-3 h-6 w-6 border-b-[2px] border-r-[2px] border-film-amber/50" />
+          </div>
+
+          {/* Camera permission error */}
+          {cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-film-bg">
+              <p className="px-8 text-center font-mono text-[11px] leading-loose text-film-safelight">
+                カメラへのアクセスが許可されていません。
+                <br />
+                設定でカメラを許可してください。
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Right film strip */}
+        <div
+          className="flex w-4 flex-none flex-col justify-around py-2"
+          style={{ background: "#1A1D29" }}
+        >
+          {Array.from({ length: PERF_COUNT }).map((_, i) => (
+            <div
+              key={i}
+              className="mx-auto h-3 w-2 rounded-[2px]"
+              style={{
+                background: "#0F1118",
+                border: "1px solid rgba(212,162,78,0.15)",
+              }}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Film counter */}
-      <div className="flex items-center gap-3">
-        <div className="h-px w-10 bg-film-amber/20" />
-        <p className="font-mono text-xs tracking-[0.25em] text-film-amber/60">
-          {String(frameCount).padStart(3, "0")} FRAMES
-        </p>
-        <div className="h-px w-10 bg-film-amber/20" />
+      {/* Controls bar */}
+      <div
+        className="flex-none"
+        style={{
+          background: "#0F1118",
+          borderTop: "1px solid rgba(212,162,78,0.12)",
+        }}
+      >
+        <div className="flex items-center justify-between px-8 py-5 pb-8">
+          {/* Film counter */}
+          <div className="flex flex-col items-center gap-1 text-film-amber">
+            <FilmIcon />
+            <span className="font-mono text-3xl font-bold leading-none tracking-tight">
+              {remaining !== null ? String(remaining).padStart(2, "0") : "∞"}
+            </span>
+          </div>
+
+          {/* Shutter button */}
+          <button
+            onClick={handleShutter}
+            disabled={isFilmExhausted || cameraError}
+            className="h-20 w-20 rounded-full transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100"
+            style={{
+              background: "radial-gradient(circle at 38% 32%, #FFFFFF, #C8C0B0)",
+              boxShadow:
+                "0 0 0 3px #D4A24E, 0 0 0 6px #0F1118, 0 8px 28px rgba(0,0,0,0.7)",
+            }}
+            aria-label="撮影"
+          />
+
+          {/* Balance spacer */}
+          <div className="w-12" />
+        </div>
       </div>
+
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
