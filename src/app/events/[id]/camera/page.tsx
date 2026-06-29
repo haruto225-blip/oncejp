@@ -15,7 +15,7 @@ export default async function CameraPage({
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, name, reveal_at")
+    .select("id, name, reveal_at, max_photos_per_guest")
     .eq("id", id)
     .maybeSingle();
 
@@ -33,6 +33,12 @@ export default async function CameraPage({
     );
   }
 
+  const { count: photoCount } = await supabase
+    .from("photos")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", id)
+    .eq("guest_id", guest_id);
+
   return (
     <div className="flex min-h-screen flex-col bg-film-bg">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-8 pb-20">
@@ -42,7 +48,13 @@ export default async function CameraPage({
           </p>
           <h1 className="font-serif text-xl text-film-card">{event.name}</h1>
         </div>
-        <CameraView eventId={event.id} guestId={guest_id} revealAt={event.reveal_at ?? null} />
+        <CameraView
+          eventId={event.id}
+          guestId={guest_id}
+          revealAt={event.reveal_at ?? null}
+          maxPhotosPerGuest={event.max_photos_per_guest ?? null}
+          initialPhotoCount={photoCount ?? 0}
+        />
       </div>
       <GuestBottomNav
         eventId={event.id}

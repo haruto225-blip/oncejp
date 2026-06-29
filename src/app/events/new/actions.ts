@@ -16,6 +16,7 @@ export async function createEvent(
   const name = formData.get("name")?.toString().trim();
   const revealAt = formData.get("reveal_at")?.toString();
   const maxGuests = formData.get("max_guests")?.toString();
+  const maxPhotosRaw = formData.get("max_photos_per_guest")?.toString();
 
   if (!name || !revealAt || !maxGuests) {
     return { error: "すべての項目を入力してください" };
@@ -26,6 +27,9 @@ export async function createEvent(
     return { error: "最大参加人数は1以上の整数で入力してください" };
   }
 
+  const maxPhotosPerGuest =
+    maxPhotosRaw && maxPhotosRaw !== "" ? Number(maxPhotosRaw) : null;
+
   const { data, error } = await supabase
     .from("events")
     .insert({
@@ -33,6 +37,7 @@ export async function createEvent(
       name,
       reveal_at: new Date(revealAt + "+09:00").toISOString(),
       max_guests: maxGuestsNumber,
+      max_photos_per_guest: maxPhotosPerGuest,
     })
     .select("id")
     .single();

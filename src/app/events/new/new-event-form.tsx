@@ -53,6 +53,24 @@ export function NewEventForm() {
         />
       </div>
 
+      <div className="flex flex-col gap-1">
+        <label htmlFor="max_photos_per_guest" className="text-sm font-medium text-gray-700">
+          1人あたりの撮影枚数
+        </label>
+        <select
+          id="max_photos_per_guest"
+          name="max_photos_per_guest"
+          defaultValue="27"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-gray-500 focus:outline-none"
+        >
+          <option value="12">12枚</option>
+          <option value="24">24枚</option>
+          <option value="27">27枚</option>
+          <option value="36">36枚</option>
+          <option value="">無制限</option>
+        </select>
+      </div>
+
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <button

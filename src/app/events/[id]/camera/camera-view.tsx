@@ -8,14 +8,22 @@ export function CameraView({
   eventId,
   guestId,
   revealAt,
+  maxPhotosPerGuest,
+  initialPhotoCount,
 }: {
   eventId: string;
   guestId: string;
   revealAt: string | null;
+  maxPhotosPerGuest: number | null;
+  initialPhotoCount: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [frameCount, setFrameCount] = useState(0);
+  const [frameCount, setFrameCount] = useState(initialPhotoCount);
   const [isExpired, setIsExpired] = useState(false);
+
+  const remaining =
+    maxPhotosPerGuest !== null ? maxPhotosPerGuest - frameCount : null;
+  const isFilmExhausted = remaining !== null && remaining <= 0;
 
   useEffect(() => {
     if (!revealAt) return;
@@ -39,6 +47,7 @@ export function CameraView({
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (maxPhotosPerGuest !== null && frameCount >= maxPhotosPerGuest) return;
 
       e.target.value = "";
       setFrameCount((n) => n + 1);
@@ -59,8 +68,59 @@ export function CameraView({
         is_hidden: true,
       });
     },
-    [eventId, guestId],
+    [eventId, guestId, maxPhotosPerGuest, frameCount],
   );
+
+  /* ── フィルム使い切りスクリーン ── */
+  if (isFilmExhausted) {
+    return (
+      <div className="flex flex-col items-center gap-8 py-6 text-center">
+        <p className="font-mono text-[10px] tracking-[0.4em] text-film-amber/40 uppercase">
+          ── FILM EXHAUSTED ──
+        </p>
+
+        <div
+          className="flex h-20 w-20 items-center justify-center rounded-full"
+          style={{
+            background: "radial-gradient(circle, #2E324299 0%, transparent 70%)",
+            boxShadow: "0 0 32px 6px rgba(212,162,78,0.12)",
+            border: "1px solid rgba(212,162,78,0.15)",
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="rgba(212,162,78,0.5)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-9 w-9"
+            aria-hidden
+          >
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+            <line x1="12" y1="12" x2="12" y2="16" />
+            <line x1="10" y1="14" x2="14" y2="14" />
+          </svg>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="font-serif text-xl text-film-card">フィルムを使い切りました</p>
+          <p className="font-mono text-[11px] tracking-widest text-film-card/45 uppercase">
+            現像が終わるまでお待ちください
+          </p>
+        </div>
+
+        <Link
+          href={`/events/${eventId}/gallery?guest_id=${guestId}`}
+          className="rounded-none border border-film-amber/40 px-8 py-2 font-mono text-[11px] tracking-[0.3em] text-film-amber/70 uppercase transition-colors hover:border-film-amber/70 hover:text-film-amber"
+        >
+          ギャラリーへ
+        </Link>
+      </div>
+    );
+  }
 
   /* ── 撮影終了スクリーン ── */
   if (isExpired) {
@@ -113,7 +173,7 @@ export function CameraView({
 
   /* ── 通常カメラスクリーン ── */
   return (
-    <div className="flex flex-col items-center gap-10 py-6">
+    <div className="relative flex flex-col items-center gap-10 py-6">
       <input
         ref={inputRef}
         type="file"
@@ -123,11 +183,21 @@ export function CameraView({
         onChange={handleFileChange}
       />
 
+      {/* Remaining shots indicator */}
+      {remaining !== null && (
+        <div className="fixed bottom-24 left-4">
+          <p className="font-mono text-[11px] tracking-[0.2em] text-film-amber/70">
+            残り{remaining}枚
+          </p>
+        </div>
+      )}
+
       {/* Camera open button */}
       <div className="flex flex-col items-center gap-4">
         <button
           onClick={() => inputRef.current?.click()}
-          className="relative h-28 w-28 rounded-full transition-transform active:scale-90"
+          disabled={isFilmExhausted}
+          className="relative h-28 w-28 rounded-full transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100"
           style={{
             background: "#2E3242",
             boxShadow:
