@@ -33,7 +33,7 @@ export function FilmPhoto({ src, alt = "" }: { src: string; alt?: string }) {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 50%, transparent 36%, rgba(0,0,0,0.65) 100%)",
+            "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.30) 100%)",
           opacity: revealed ? 1 : 0,
           transition: "opacity 1.4s ease-in",
         }}

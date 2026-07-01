@@ -52,6 +52,7 @@ export function CameraView({
   const [cameraError, setCameraError] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
+  const [thumbs, setThumbs] = useState<string[]>([]);
 
   const remaining =
     maxPhotosPerGuest !== null ? maxPhotosPerGuest - frameCount : null;
@@ -112,6 +113,10 @@ export function CameraView({
       return;
     }
     ctx.drawImage(video, 0, 0);
+
+    // Thumbnail for hand display (local only, not uploaded)
+    const thumbDataUrl = canvas.toDataURL("image/jpeg", 0.3);
+    setThumbs((prev) => [thumbDataUrl, ...prev].slice(0, 3));
 
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", 0.85),
@@ -310,6 +315,48 @@ export function CameraView({
                 設定でカメラを許可してください。
               </p>
             </div>
+          )}
+
+          {/* Hand thumbnails — fan display of last 3 shots */}
+          {thumbs.length > 0 && (
+            <>
+              <style>{`@keyframes thumbIn{from{opacity:0}to{opacity:.68}}`}</style>
+              <div
+                aria-hidden
+                className="pointer-events-none absolute"
+                style={{ bottom: 20, right: 42 }}
+              >
+                {[...thumbs].reverse().map((url, i) => {
+                  const rotations = [-13, -4, 4];
+                  const rotation = rotations[i] ?? 0;
+                  const isNewest = i === thumbs.length - 1;
+                  return (
+                    <img
+                      key={url}
+                      src={url}
+                      alt=""
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: -26,
+                        width: 52,
+                        height: 39,
+                        objectFit: "cover",
+                        borderRadius: 2,
+                        border: "1.5px solid rgba(255,255,255,0.2)",
+                        transform: `rotate(${rotation}deg)`,
+                        transformOrigin: "bottom center",
+                        zIndex: i,
+                        opacity: 0.68,
+                        filter: "brightness(0.58) saturate(0.75)",
+                        transition: "transform 0.2s ease",
+                        animation: isNewest ? "thumbIn 0.28s ease-out" : "none",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
 
